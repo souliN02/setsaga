@@ -5,12 +5,14 @@
   "packageManager": "pnpm@10.25.0",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "drizzle-orm": "^0.45.2",
     "expo": "~57.0.2",
     "expo-constants": "~57.0.3",
     "expo-font": "~57.0.0",
     "expo-linking": "~57.0.1",
     "expo-router": "~57.0.3",
     "expo-splash-screen": "~57.0.2",
+    "expo-sqlite": "~57.0.0",
     "expo-status-bar": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "react": "19.2.3",
@@ -26,6 +28,8 @@
   "devDependencies": {
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "babel-plugin-inline-import": "^3.0.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^57.0.0",
     "eslint-config-prettier": "^10.1.8",
@@ -41,10 +45,14 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "db:generate": "drizzle-kit generate"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    }
   },
   "private": true
 }

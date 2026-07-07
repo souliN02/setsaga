@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -78,6 +79,32 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
   const endSession = useSessionStore((state) => state.endSession);
   const [pending, setPending] = useState(false);
   const listRef = useRef<FlatList<number>>(null);
+  const pendingScrollIndex = useRef<number | null>(null);
+
+  const scrollToSection = (index: number) => {
+    listRef.current?.scrollToIndex({ index, viewPosition: 0, animated: true });
+  };
+
+  // Scrolling at focus time gets clamped: the keyboard isn't up yet, so the
+  // list is still full-height with no scroll room. Defer to keyboardDidShow,
+  // after KeyboardAvoidingView has shrunk the viewport.
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => {
+      const index = pendingScrollIndex.current;
+      if (index === null) return;
+      pendingScrollIndex.current = null;
+      requestAnimationFrame(() => scrollToSection(index));
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const onSectionInputFocus = (index: number) => {
+    if (Keyboard.isVisible()) {
+      scrollToSection(index);
+    } else {
+      pendingScrollIndex.current = index;
+    }
+  };
 
   const workout = useActiveWorkout(workoutId);
   const { data: sets } = useWorkoutSets(workoutId);
@@ -174,9 +201,7 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
               onDeleteSet={(setId) => {
                 void deleteSet(setId);
               }}
-              onInputFocus={() =>
-                listRef.current?.scrollToIndex({ index, viewPosition: 0, animated: true })
-              }
+              onInputFocus={() => onSectionInputFocus(index)}
             />
           );
         }}

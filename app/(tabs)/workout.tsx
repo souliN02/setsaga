@@ -1,6 +1,15 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { ElapsedTime } from '@/components/ElapsedTime';
 import { EmptyState } from '@/components/EmptyState';
@@ -68,6 +77,7 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
   const exerciseOrder = useSessionStore((state) => state.exerciseOrder);
   const endSession = useSessionStore((state) => state.endSession);
   const [pending, setPending] = useState(false);
+  const listRef = useRef<FlatList<number>>(null);
 
   const workout = useActiveWorkout(workoutId);
   const { data: sets } = useWorkoutSets(workoutId);
@@ -118,7 +128,13 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
   };
 
   return (
-    <View style={styles.container}>
+    // Edge-to-edge Android turns adjustResize into adjustNothing (the window no
+    // longer shrinks for the keyboard), so the screen compensates itself:
+    // padding via KeyboardAvoidingView + scrolling the focused section into view.
+    // iOS is handled by automaticallyAdjustKeyboardInsets on the list.
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'android' ? 'padding' : undefined}>
       <View style={styles.sessionHeader}>
         {workout ? (
           <ElapsedTime startedAt={workout.startedAt} />
@@ -136,11 +152,13 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
       </View>
 
       <FlatList
+        ref={listRef}
         data={order}
         keyExtractor={(exerciseId) => String(exerciseId)}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        renderItem={({ item: exerciseId }) => {
+        onScrollToIndexFailed={() => listRef.current?.scrollToEnd()}
+        renderItem={({ item: exerciseId, index }) => {
           const exercise = exercisesById.get(exerciseId);
           if (!exercise) return null;
           return (
@@ -156,6 +174,9 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
               onDeleteSet={(setId) => {
                 void deleteSet(setId);
               }}
+              onInputFocus={() =>
+                listRef.current?.scrollToIndex({ index, viewPosition: 0, animated: true })
+              }
             />
           );
         }}
@@ -174,7 +195,7 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
           </Pressable>
         }
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

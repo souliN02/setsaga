@@ -13,9 +13,19 @@ type Props = {
   onAddSet: (reps: number, weightKg: number) => void;
   onUpdateSet: (setId: number, reps: number, weightKg: number) => void;
   onDeleteSet: (setId: number) => void;
+  // Edge-to-edge Android doesn't resize the window for the keyboard, so the
+  // screen scrolls this section into view itself when one of its inputs focuses.
+  onInputFocus?: () => void;
 };
 
-export function ExerciseSection({ exercise, sets, onAddSet, onUpdateSet, onDeleteSet }: Props) {
+export function ExerciseSection({
+  exercise,
+  sets,
+  onAddSet,
+  onUpdateSet,
+  onDeleteSet,
+  onInputFocus,
+}: Props) {
   const [editingSetId, setEditingSetId] = useState<number | null>(null);
   const lastSet = lastSetFor(sets, exercise.id);
 
@@ -40,6 +50,7 @@ export function ExerciseSection({ exercise, sets, onAddSet, onUpdateSet, onDelet
               setEditingSetId(null);
             }}
             onCancel={() => setEditingSetId(null)}
+            onFocus={onInputFocus}
           />
         ) : (
           <SetRow
@@ -59,6 +70,7 @@ export function ExerciseSection({ exercise, sets, onAddSet, onUpdateSet, onDelet
         initialWeightKg={lastSet?.weightKg}
         submitLabel="Log set"
         onSubmit={onAddSet}
+        onFocus={onInputFocus}
       />
     </View>
   );

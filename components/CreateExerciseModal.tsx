@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -58,9 +57,9 @@ export function CreateExerciseModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}>
+      {/* 'padding' on Android too: edge-to-edge disables adjustResize, so the
+          keyboard would otherwise cover this bottom sheet. */}
+      <KeyboardAvoidingView behavior="padding" style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>New custom exercise</Text>
 

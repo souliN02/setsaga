@@ -10,12 +10,20 @@ type Props = {
   submitLabel: string;
   onSubmit: (reps: number, weightKg: number) => void;
   onCancel?: () => void;
+  onFocus?: () => void;
 };
 
 // Shared input row for quick-add and edit. Input state is kept as strings so
 // iOS decimal entry isn't fought by a controlled numeric value; parsing/validation
 // lives in lib/workout.ts.
-export function SetInputRow({ initialReps, initialWeightKg, submitLabel, onSubmit, onCancel }: Props) {
+export function SetInputRow({
+  initialReps,
+  initialWeightKg,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  onFocus,
+}: Props) {
   const [repsText, setRepsText] = useState(initialReps !== undefined ? String(initialReps) : '');
   const [weightText, setWeightText] = useState(
     initialWeightKg !== undefined ? String(initialWeightKg) : '',
@@ -34,6 +42,7 @@ export function SetInputRow({ initialReps, initialWeightKg, submitLabel, onSubmi
         placeholderTextColor={colors.textSecondary}
         keyboardType="number-pad"
         style={styles.input}
+        onFocus={onFocus}
       />
       <TextInput
         value={weightText}
@@ -42,6 +51,7 @@ export function SetInputRow({ initialReps, initialWeightKg, submitLabel, onSubmi
         placeholderTextColor={colors.textSecondary}
         keyboardType="decimal-pad"
         style={styles.input}
+        onFocus={onFocus}
       />
       {onCancel && (
         <Pressable onPress={onCancel} accessibilityRole="button" style={styles.cancelButton}>

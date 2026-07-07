@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Exercise } from '@/lib/db/schema';
 import { formatEquipment, formatMuscleGroup } from '@/lib/format';
@@ -6,10 +6,11 @@ import { colors } from '@/lib/theme';
 
 type Props = {
   exercise: Exercise;
+  onPress?: () => void;
 };
 
-export function ExerciseListItem({ exercise }: Props) {
-  return (
+export function ExerciseListItem({ exercise, onPress }: Props) {
+  const row = (
     <View style={styles.row}>
       <View style={styles.textColumn}>
         <Text style={styles.name}>{exercise.name}</Text>
@@ -23,6 +24,16 @@ export function ExerciseListItem({ exercise }: Props) {
         </View>
       )}
     </View>
+  );
+
+  if (!onPress) {
+    return row;
+  }
+
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button">
+      {row}
+    </Pressable>
   );
 }
 

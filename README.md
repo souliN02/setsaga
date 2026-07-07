@@ -6,7 +6,7 @@ Gamified offline-first workout tracker for iOS and Android. Log sets, reps and w
 
 All data lives in SQLite on the device — no accounts, no backend, no network required. Full product spec in [SPEC.md](SPEC.md).
 
-**Status:** Phase 1 — database, seed and exercise library. On first launch the app applies bundled SQLite migrations and seeds ~100 exercises; the Library tab has search, muscle-group filters and custom exercise creation. See SPEC.md section 12 for the build plan.
+**Status:** Phase 2 — workout logging. Start a workout, add exercises from the library, log/edit/delete sets (quick-add defaults to your previous set), and finish. Logging is **write-through and crash-safe**: the workout row is inserted the moment you start and every set the moment you confirm it, so killing the app mid-session loses nothing — on the next launch the app detects the unfinished workout and offers Resume or Discard. See SPEC.md section 12 for the build plan.
 
 ## Local setup
 

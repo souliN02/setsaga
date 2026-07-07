@@ -37,3 +37,20 @@ export const EQUIPMENT_OPTIONS = EQUIPMENT.map((value) => ({
   value,
   label: EQUIPMENT_LABELS[value],
 }));
+
+// Single choke point for weight display (SPEC.md section 11) — a future unit
+// toggle changes only this function.
+export function formatWeight(weightKg: number): string {
+  const rounded = Math.round(weightKg * 100) / 100;
+  return `${rounded} kg`;
+}
+
+/** Elapsed duration from ms: "0:07", "45:12", "1:23:45". */
+export function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const seconds = totalSeconds % 60;
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const hours = Math.floor(totalSeconds / 3600);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${minutes}:${two(seconds)}`;
+}

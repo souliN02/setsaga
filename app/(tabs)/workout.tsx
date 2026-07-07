@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -85,25 +85,27 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
     listRef.current?.scrollToIndex({ index, viewPosition: 0, animated: true });
   };
 
-  // Scrolling at focus time gets clamped: the keyboard isn't up yet, so the
-  // list is still full-height with no scroll room. Defer to keyboardDidShow,
-  // after KeyboardAvoidingView has shrunk the viewport.
-  useEffect(() => {
-    const subscription = Keyboard.addListener('keyboardDidShow', () => {
-      const index = pendingScrollIndex.current;
-      if (index === null) return;
-      pendingScrollIndex.current = null;
-      requestAnimationFrame(() => scrollToSection(index));
-    });
-    return () => subscription.remove();
-  }, []);
-
+  // Scrolling at focus time gets clamped (the keyboard isn't up, the list is
+  // still full-height, no scroll room) and even keyboardDidShow races the
+  // KeyboardAvoidingView's re-layout. So the scroll is driven by the layout
+  // itself: park the index on focus and scroll when the list resizes for the
+  // keyboard (onLayout). If the keyboard is already open — hopping between
+  // sections — there is no resize coming, so scroll immediately.
   const onSectionInputFocus = (index: number) => {
+    // iOS reveals the focused input natively via automaticallyAdjustKeyboardInsets.
+    if (Platform.OS !== 'android') return;
     if (Keyboard.isVisible()) {
       scrollToSection(index);
     } else {
       pendingScrollIndex.current = index;
     }
+  };
+
+  const onListLayout = () => {
+    const index = pendingScrollIndex.current;
+    if (index === null) return;
+    pendingScrollIndex.current = null;
+    scrollToSection(index);
   };
 
   const workout = useActiveWorkout(workoutId);
@@ -181,6 +183,8 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
       <FlatList
         ref={listRef}
         data={order}
+        style={styles.sessionList}
+        onLayout={onListLayout}
         keyExtractor={(exerciseId) => String(exerciseId)}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
@@ -269,6 +273,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  // Explicit flex so the KeyboardAvoidingView's padding shrinks the list
+  // (and fires onLayout) instead of letting it keep an auto height.
+  sessionList: {
+    flex: 1,
   },
   timePlaceholder: {
     color: colors.text,

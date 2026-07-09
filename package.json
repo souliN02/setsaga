@@ -53,6 +53,18 @@
     "preset": "jest-expo",
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1"
+    },
+    "collectCoverageFrom": [
+      "lib/game/**/*.ts",
+      "lib/dates.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 90,
+        "branches": 90,
+        "functions": 90,
+        "lines": 90
+      }
     }
   },
   "private": true

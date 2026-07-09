@@ -6,7 +6,9 @@ Gamified offline-first workout tracker for iOS and Android. Log sets, reps and w
 
 All data lives in SQLite on the device — no accounts, no backend, no network required. Full product spec in [SPEC.md](SPEC.md).
 
-**Status:** Phase 2 — workout logging. Start a workout, add exercises from the library, log/edit/delete sets (quick-add defaults to your previous set), and finish. Logging is **write-through and crash-safe**: the workout row is inserted the moment you start and every set the moment you confirm it, so killing the app mid-session loses nothing — on the next launch the app detects the unfinished workout and offers Resume or Discard. See SPEC.md section 12 for the build plan.
+**Status:** Phase 3 — gamification engine. XP, levels, streaks, PR detection and the 12 badge criteria are implemented as **pure functions** in `lib/game/` (built test-first; the jest suite is the executable version of SPEC.md section 8, with 100% coverage on the engine). Gamification state is **derived, never stored**: finishing a workout runs a pipeline that flags PR sets and writes badge-unlock rows, but XP/level/streak are always recomputed from the workout data, so they can never drift out of sync. The UI for all of this lands in Phase 4 — see SPEC.md section 12 for the build plan.
+
+Earlier phases: workout logging is **write-through and crash-safe** — the workout row is inserted the moment you start and every set the moment you confirm it, so killing the app mid-session loses nothing; the next launch offers Resume or Discard.
 
 ## Local setup
 

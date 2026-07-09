@@ -1,10 +1,16 @@
-import { and, asc, desc, eq, gt, inArray, isNull, like, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, like, sql } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 
+import { toLocalDateKey } from '@/lib/dates';
+import { newBadgeUnlocks, type BadgeStats } from '@/lib/game/badges';
+import { detectPrs, type PrEvent } from '@/lib/game/prs';
+import { currentStreak } from '@/lib/game/streak';
+import { levelForXp, totalXp } from '@/lib/game/xp';
 import { nextSetNumberFor } from '@/lib/workout';
 
 import { db } from './client';
 import {
+  achievements,
   exercises,
   sets,
   workouts,
@@ -167,11 +173,124 @@ export async function deleteSet(setId: number): Promise<void> {
   });
 }
 
-// The single finish entry point. Phase 3 seam: the post-workout pipeline
-// (PR detection, badge unlocks) runs inside this function — screens must only
-// ever call finishWorkout(), never stamp finishedAt another way.
-export async function finishWorkout(workoutId: number): Promise<void> {
-  await db.update(workouts).set({ finishedAt: Date.now() }).where(eq(workouts.id, workoutId));
+// --- Post-workout pipeline (Phase 3, SPEC.md sections 4 and 8) ---
+
+// Derived gamification stats over finished workouts. The inner join to sets
+// enforces the section 6 definition throughout: a workout only counts once it
+// is finished AND contains at least one set.
+type GameStatsTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function loadGameStats(tx: GameStatsTx, todayKey: string): Promise<BadgeStats> {
+  const [totals] = await tx
+    .select({
+      finishedWorkouts: sql<number>`count(distinct ${sets.workoutId})`,
+      lifetimeSets: sql<number>`count(${sets.id})`,
+      prEvents: sql<number>`coalesce(sum(${sets.isPr}), 0)`,
+      lifetimeVolume: sql<number>`coalesce(sum(${sets.weightKg} * ${sets.reps}), 0)`,
+    })
+    .from(sets)
+    .innerJoin(workouts, eq(sets.workoutId, workouts.id))
+    .where(isNotNull(workouts.finishedAt));
+
+  const sessionVolumes = await tx
+    .select({ volume: sql<number>`sum(${sets.weightKg} * ${sets.reps})` })
+    .from(sets)
+    .innerJoin(workouts, eq(sets.workoutId, workouts.id))
+    .where(isNotNull(workouts.finishedAt))
+    .groupBy(sets.workoutId);
+
+  const trainingDays = await tx
+    .selectDistinct({ startedAt: workouts.startedAt })
+    .from(workouts)
+    .innerJoin(sets, eq(sets.workoutId, workouts.id))
+    .where(isNotNull(workouts.finishedAt));
+
+  return {
+    ...totals,
+    maxSessionVolume: sessionVolumes.reduce((max, row) => Math.max(max, row.volume), 0),
+    currentStreak: currentStreak(
+      trainingDays.map((row) => toLocalDateKey(row.startedAt)),
+      todayKey,
+    ),
+  };
+}
+
+function levelFromStats(stats: BadgeStats): number {
+  return levelForXp(
+    totalXp({ sets: stats.lifetimeSets, workouts: stats.finishedWorkouts, prEvents: stats.prEvents }),
+  );
+}
+
+// What the finishing screen needs for celebration toasts (UI lands in Phase 4).
+export interface FinishWorkoutResult {
+  prEvents: PrEvent[];
+  unlockedBadgeIds: string[];
+  levelBefore: number;
+  levelAfter: number;
+}
+
+// The single finish entry point: stamps finishedAt and runs the post-workout
+// pipeline (PR flags, badge unlock rows) in one transaction — screens must
+// only ever call finishWorkout(), never stamp finishedAt another way.
+export async function finishWorkout(workoutId: number): Promise<FinishWorkoutResult> {
+  const finishedAt = Date.now();
+  const todayKey = toLocalDateKey(finishedAt);
+  return db.transaction(async (tx) => {
+    const workoutSets = await tx.select().from(sets).where(eq(sets.workoutId, workoutId));
+
+    // This workout is still unfinished, so "before" stats naturally exclude it.
+    const before = await loadGameStats(tx, todayKey);
+
+    // PRs compare against all previously finished workouts for each exercise.
+    let prEvents: PrEvent[] = [];
+    if (workoutSets.length > 0) {
+      const exerciseIds = [...new Set(workoutSets.map((set) => set.exerciseId))];
+      const previousMaxRows = await tx
+        .select({
+          exerciseId: sets.exerciseId,
+          maxWeightKg: sql<number>`max(${sets.weightKg})`,
+        })
+        .from(sets)
+        .innerJoin(workouts, eq(sets.workoutId, workouts.id))
+        .where(and(isNotNull(workouts.finishedAt), inArray(sets.exerciseId, exerciseIds)))
+        .groupBy(sets.exerciseId);
+      prEvents = detectPrs(
+        workoutSets,
+        new Map(previousMaxRows.map((row) => [row.exerciseId, row.maxWeightKg])),
+      );
+      if (prEvents.length > 0) {
+        await tx
+          .update(sets)
+          .set({ isPr: true })
+          .where(
+            inArray(
+              sets.id,
+              prEvents.map((event) => event.setId),
+            ),
+          );
+      }
+    }
+
+    await tx.update(workouts).set({ finishedAt }).where(eq(workouts.id, workoutId));
+
+    // Badges are evaluated on stats that now include this workout; only
+    // criteria without an existing unlock row produce new achievements.
+    const after = await loadGameStats(tx, todayKey);
+    const unlockedRows = await tx.select({ badgeId: achievements.badgeId }).from(achievements);
+    const unlocked = newBadgeUnlocks(after, new Set(unlockedRows.map((row) => row.badgeId)));
+    if (unlocked.length > 0) {
+      await tx
+        .insert(achievements)
+        .values(unlocked.map((badge) => ({ badgeId: badge.id, unlockedAt: finishedAt })));
+    }
+
+    return {
+      prEvents,
+      unlockedBadgeIds: unlocked.map((badge) => badge.id),
+      levelBefore: levelFromStats(before),
+      levelAfter: levelFromStats(after),
+    };
+  });
 }
 
 // Sets are deleted explicitly (not left to the FK cascade) because SQLite's

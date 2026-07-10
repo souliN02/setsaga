@@ -1,4 +1,4 @@
-import { daysBetween, toLocalDateKey } from '@/lib/dates';
+import { daysBetween, startOfWeekKey, toLocalDateKey } from '@/lib/dates';
 
 // Timestamps are built from local-time components so expectations hold in any
 // timezone the test runner happens to use.
@@ -61,5 +61,28 @@ describe('daysBetween', () => {
 
   it('spans long ranges exactly (no DST drift)', () => {
     expect(daysBetween('2026-01-01', '2027-01-01')).toBe(365);
+  });
+});
+
+// Weeks start on Monday ("this week" on Home covers Mon–Sun).
+describe('startOfWeekKey', () => {
+  it('returns the Monday of a mid-week date', () => {
+    expect(startOfWeekKey('2026-07-09')).toBe('2026-07-06'); // Thursday → Monday
+  });
+
+  it('is a fixed point on Mondays', () => {
+    expect(startOfWeekKey('2026-07-06')).toBe('2026-07-06');
+  });
+
+  it('keeps Sunday in the week started by the previous Monday', () => {
+    expect(startOfWeekKey('2026-07-12')).toBe('2026-07-06');
+  });
+
+  it('crosses month boundaries', () => {
+    expect(startOfWeekKey('2026-07-01')).toBe('2026-06-29'); // Wednesday → Monday in June
+  });
+
+  it('crosses year boundaries', () => {
+    expect(startOfWeekKey('2026-01-01')).toBe('2025-12-29'); // Thursday → Monday in 2025
   });
 });

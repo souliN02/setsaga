@@ -6,4 +6,5 @@ export const colors = {
   text: '#F2F4F7',
   textSecondary: '#98A2B3',
   primary: '#F59E0B',
+  danger: '#F97066',
 } as const;

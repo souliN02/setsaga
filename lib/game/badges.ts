@@ -11,87 +11,71 @@ export interface BadgeStats {
   lifetimeVolume: number;
 }
 
+export interface BadgeProgress {
+  current: number;
+  target: number;
+}
+
 export interface Badge {
   id: string;
   name: string;
   description: string;
   isUnlocked: (stats: BadgeStats) => boolean;
+  /** Display-only progress toward the criterion (locked badges on the grid). */
+  progress: (stats: BadgeStats) => BadgeProgress;
+}
+
+// Every badge is a threshold on a single stat, so the threshold is defined
+// once and the unlock rule and progress display can never disagree.
+function thresholdBadge(
+  id: string,
+  name: string,
+  description: string,
+  stat: keyof BadgeStats,
+  target: number,
+): Badge {
+  return {
+    id,
+    name,
+    description,
+    isUnlocked: (stats) => stats[stat] >= target,
+    progress: (stats) => ({ current: stats[stat], target }),
+  };
 }
 
 export const BADGES: readonly Badge[] = [
-  {
-    id: 'first_workout',
-    name: 'First Rep',
-    description: 'Finish your first workout',
-    isUnlocked: (stats) => stats.finishedWorkouts >= 1,
-  },
-  {
-    id: 'workouts_10',
-    name: 'Regular',
-    description: 'Finish 10 workouts',
-    isUnlocked: (stats) => stats.finishedWorkouts >= 10,
-  },
-  {
-    id: 'workouts_50',
-    name: 'Gym Rat',
-    description: 'Finish 50 workouts',
-    isUnlocked: (stats) => stats.finishedWorkouts >= 50,
-  },
-  {
-    id: 'workouts_100',
-    name: 'Iron Veteran',
-    description: 'Finish 100 workouts',
-    isUnlocked: (stats) => stats.finishedWorkouts >= 100,
-  },
-  {
-    id: 'streak_3',
-    name: 'Warming Up',
-    description: 'Reach a 3-day streak',
-    isUnlocked: (stats) => stats.currentStreak >= 3,
-  },
-  {
-    id: 'streak_7',
-    name: 'On Fire',
-    description: 'Reach a 7-day streak',
-    isUnlocked: (stats) => stats.currentStreak >= 7,
-  },
-  {
-    id: 'streak_14',
-    name: 'Unstoppable',
-    description: 'Reach a 14-day streak',
-    isUnlocked: (stats) => stats.currentStreak >= 14,
-  },
-  {
-    id: 'first_pr',
-    name: 'New Heights',
-    description: 'Set your first personal record',
-    isUnlocked: (stats) => stats.prEvents >= 1,
-  },
-  {
-    id: 'pr_10',
-    name: 'Record Breaker',
-    description: 'Set 10 personal records',
-    isUnlocked: (stats) => stats.prEvents >= 10,
-  },
-  {
-    id: 'session_volume_5k',
-    name: 'Heavy Session',
-    description: 'Move 5,000 kg in a single workout',
-    isUnlocked: (stats) => stats.maxSessionVolume >= 5000,
-  },
-  {
-    id: 'lifetime_volume_100k',
-    name: 'Six Figures',
-    description: 'Move 100,000 kg in total',
-    isUnlocked: (stats) => stats.lifetimeVolume >= 100000,
-  },
-  {
-    id: 'sets_500',
-    name: 'Set Machine',
-    description: 'Log 500 lifetime sets',
-    isUnlocked: (stats) => stats.lifetimeSets >= 500,
-  },
+  thresholdBadge('first_workout', 'First Rep', 'Finish your first workout', 'finishedWorkouts', 1),
+  thresholdBadge('workouts_10', 'Regular', 'Finish 10 workouts', 'finishedWorkouts', 10),
+  thresholdBadge('workouts_50', 'Gym Rat', 'Finish 50 workouts', 'finishedWorkouts', 50),
+  thresholdBadge('workouts_100', 'Iron Veteran', 'Finish 100 workouts', 'finishedWorkouts', 100),
+  thresholdBadge('streak_3', 'Warming Up', 'Reach a 3-day streak', 'currentStreak', 3),
+  thresholdBadge('streak_7', 'On Fire', 'Reach a 7-day streak', 'currentStreak', 7),
+  thresholdBadge('streak_14', 'Unstoppable', 'Reach a 14-day streak', 'currentStreak', 14),
+  thresholdBadge('first_pr', 'New Heights', 'Set your first personal record', 'prEvents', 1),
+  thresholdBadge('pr_10', 'Record Breaker', 'Set 10 personal records', 'prEvents', 10),
+  thresholdBadge(
+    'session_volume_5k',
+    'Heavy Session',
+    'Move 5,000 kg in a single workout',
+    'maxSessionVolume',
+    5000,
+  ),
+  thresholdBadge(
+    'lifetime_volume_100k',
+    'Six Figures',
+    'Move 100,000 kg in total',
+    'lifetimeVolume',
+    100000,
+  ),
+  thresholdBadge('sets_500', 'Set Machine', 'Log 500 lifetime sets', 'lifetimeSets', 500),
 ];
+
+const BADGES_BY_ID = new Map(BADGES.map((badge) => [badge.id, badge]));
+
+/** Lookup for unlock rows and celebration toasts, which carry only a badgeId. */
+export function getBadge(badgeId: string): Badge | undefined {
+  return BADGES_BY_ID.get(badgeId);
+}
 
 /** Badges whose criteria are met but have no unlock row yet, in spec order. */
 export function newBadgeUnlocks(stats: BadgeStats, alreadyUnlocked: ReadonlySet<string>): Badge[] {

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useDeferredValue, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -51,7 +52,11 @@ export default function LibraryScreen() {
       <FlatList
         data={exercises}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <ExerciseListItem exercise={item} />}
+        renderItem={({ item }) => (
+          // Outside a session the library is a browser: tap → exercise detail
+          // (the in-session picker is the separate exercise-picker modal).
+          <ExerciseListItem exercise={item} onPress={() => router.push(`/exercise/${item.id}`)} />
+        )}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <EmptyState

@@ -23,8 +23,8 @@ import {
   finishWorkout,
   startWorkout,
   updateSet,
-  useActiveWorkout,
   useExercisesByIds,
+  useWorkout,
   useWorkoutSets,
 } from '@/lib/db/queries';
 import { colors } from '@/lib/theme';
@@ -111,7 +111,7 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
     scrollToSection(index);
   };
 
-  const workout = useActiveWorkout(workoutId);
+  const workout = useWorkout(workoutId);
   const { data: sets } = useWorkoutSets(workoutId);
   const order = mergeExerciseOrder(exerciseOrder, deriveExerciseOrder(sets));
   const { data: exerciseRows } = useExercisesByIds(order);

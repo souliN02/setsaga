@@ -86,9 +86,10 @@ export async function getWorkoutSets(workoutId: number): Promise<WorkoutSet[]> {
   return db.select().from(sets).where(eq(sets.workoutId, workoutId)).orderBy(asc(sets.id));
 }
 
-// Live active-workout row (source of startedAt for the elapsed timer). The -1
-// sentinel keeps the hook unconditional when no session is active.
-export function useActiveWorkout(workoutId: number | null) {
+// Live workout row by id (elapsed timer during a session, header on the
+// detail screen). The -1 sentinel keeps the hook unconditional when the id is
+// absent or unparsed.
+export function useWorkout(workoutId: number | null) {
   const { data } = useLiveQuery(
     db
       .select()
@@ -308,6 +309,125 @@ export async function finishWorkout(workoutId: number): Promise<FinishWorkoutRes
     };
   });
 }
+
+// --- History and charts (Phase 5, SPEC.md section 9) ---
+// SQL here stays thin flat-row aggregation; week bucketing and personal-best
+// derivation live in pure functions (lib/history.ts, screens) because SQLite
+// can't apply toLocalDateKey()'s local-timezone day boundaries.
+
+// One row per finished workout for the History list AND (via
+// weeklyVolumeBuckets) the weekly volume chart — a single live source, so the
+// list and the chart can never disagree. The inner join enforces the section 6
+// definition: finished = finishedAt set AND at least one set logged.
+export function useWorkoutSummaries() {
+  return useLiveQuery(
+    db
+      .select({
+        id: workouts.id,
+        startedAt: workouts.startedAt,
+        name: workouts.name,
+        setCount: sql<number>`count(${sets.id})`,
+        volumeKg: sql<number>`sum(${sets.weightKg} * ${sets.reps})`,
+        prCount: sql<number>`sum(${sets.isPr})`,
+      })
+      .from(workouts)
+      .innerJoin(sets, eq(sets.workoutId, workouts.id))
+      .where(isNotNull(workouts.finishedAt))
+      .groupBy(workouts.id)
+      .orderBy(desc(workouts.startedAt), desc(workouts.id)),
+  );
+}
+
+export type WorkoutSummary = ReturnType<typeof useWorkoutSummaries>['data'][number];
+
+// Full set breakdown of one workout with exercise names, insertion order.
+// Grouping for display reuses deriveExerciseOrder/groupSetsByExercise.
+export function useWorkoutDetailSets(workoutId: number | null) {
+  return useLiveQuery(
+    db
+      .select({
+        id: sets.id,
+        workoutId: sets.workoutId,
+        exerciseId: sets.exerciseId,
+        setNumber: sets.setNumber,
+        reps: sets.reps,
+        weightKg: sets.weightKg,
+        isPr: sets.isPr,
+        createdAt: sets.createdAt,
+        exerciseName: exercises.name,
+      })
+      .from(sets)
+      .innerJoin(exercises, eq(sets.exerciseId, exercises.id))
+      .where(eq(sets.workoutId, workoutId ?? -1))
+      .orderBy(asc(sets.id)),
+    [workoutId],
+  );
+}
+
+export type WorkoutDetailSet = ReturnType<typeof useWorkoutDetailSets>['data'][number];
+
+// Live exercise row for the detail header.
+export function useExercise(exerciseId: number | null) {
+  const { data } = useLiveQuery(
+    db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.id, exerciseId ?? -1)),
+    [exerciseId],
+  );
+  return data.length > 0 ? data[0] : null;
+}
+
+// Line-chart source: one point per finished workout containing a weighted set
+// of this exercise. weightKg > 0 matches PR semantics (SPEC.md section 8.4) —
+// the personal best shown next to the chart is the max of these rows, so the
+// stat always equals the chart's peak.
+export function useExerciseMaxWeightHistory(exerciseId: number | null) {
+  return useLiveQuery(
+    db
+      .select({
+        workoutId: sets.workoutId,
+        startedAt: workouts.startedAt,
+        maxWeightKg: sql<number>`max(${sets.weightKg})`,
+      })
+      .from(sets)
+      .innerJoin(workouts, eq(sets.workoutId, workouts.id))
+      .where(
+        and(
+          eq(sets.exerciseId, exerciseId ?? -1),
+          isNotNull(workouts.finishedAt),
+          gt(sets.weightKg, 0),
+        ),
+      )
+      .groupBy(sets.workoutId, workouts.startedAt)
+      .orderBy(asc(workouts.startedAt)),
+    [exerciseId],
+  );
+}
+
+export type MaxWeightPoint = ReturnType<typeof useExerciseMaxWeightHistory>['data'][number];
+
+// Recent sets of an exercise across finished workouts, newest first.
+export function useRecentExerciseSets(exerciseId: number | null, limit: number) {
+  return useLiveQuery(
+    db
+      .select({
+        id: sets.id,
+        reps: sets.reps,
+        weightKg: sets.weightKg,
+        isPr: sets.isPr,
+        createdAt: sets.createdAt,
+      })
+      .from(sets)
+      .innerJoin(workouts, eq(sets.workoutId, workouts.id))
+      .where(and(eq(sets.exerciseId, exerciseId ?? -1), isNotNull(workouts.finishedAt)))
+      .orderBy(desc(sets.id))
+      .limit(limit),
+    [exerciseId, limit],
+  );
+}
+
+export type RecentExerciseSet = ReturnType<typeof useRecentExerciseSets>['data'][number];
 
 // Sets are deleted explicitly (not left to the FK cascade) because SQLite's
 // update hook — which powers the change listener behind useLiveQuery — does not

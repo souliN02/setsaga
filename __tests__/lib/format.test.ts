@@ -1,4 +1,13 @@
-import { formatCount, formatDate, formatDuration, formatVolume, formatWeight } from '@/lib/format';
+import {
+  formatCompactCount,
+  formatCount,
+  formatDate,
+  formatDateKey,
+  formatDuration,
+  formatShortDate,
+  formatVolume,
+  formatWeight,
+} from '@/lib/format';
 
 describe('formatWeight', () => {
   it('formats whole and decimal kilograms', () => {
@@ -66,5 +75,33 @@ describe('formatDate', () => {
   it('covers month names at year boundaries', () => {
     expect(formatDate(new Date(2025, 11, 31, 12).getTime())).toBe('Dec 31, 2025');
     expect(formatDate(new Date(2026, 0, 1, 12).getTime())).toBe('Jan 1, 2026');
+  });
+});
+
+describe('formatShortDate', () => {
+  it('drops the year for chart axis labels', () => {
+    expect(formatShortDate(new Date(2026, 2, 12, 12).getTime())).toBe('Mar 12');
+    expect(formatShortDate(new Date(2026, 0, 1, 12).getTime())).toBe('Jan 1');
+  });
+});
+
+describe('formatDateKey', () => {
+  it('formats a date key as a yearless label', () => {
+    expect(formatDateKey('2026-06-22')).toBe('Jun 22');
+    expect(formatDateKey('2025-12-29')).toBe('Dec 29');
+    expect(formatDateKey('2026-01-05')).toBe('Jan 5');
+  });
+});
+
+describe('formatCompactCount', () => {
+  it('leaves sub-thousand counts alone', () => {
+    expect(formatCompactCount(0)).toBe('0');
+    expect(formatCompactCount(850)).toBe('850');
+  });
+
+  it('abbreviates thousands to one decimal', () => {
+    expect(formatCompactCount(1234)).toBe('1.2k');
+    expect(formatCompactCount(5000)).toBe('5k');
+    expect(formatCompactCount(20000)).toBe('20k');
   });
 });

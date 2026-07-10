@@ -20,3 +20,14 @@ export function toLocalDateKey(unixMs: number): string {
 export function daysBetween(fromKey: string, toKey: string): number {
   return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / MS_PER_DAY);
 }
+
+/**
+ * The Monday of the week containing a date key. "This week" everywhere in the
+ * app means this Monday–Sunday range.
+ */
+export function startOfWeekKey(dateKey: string): string {
+  const date = new Date(Date.parse(dateKey));
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7; // getUTCDay: 0 = Sunday
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  return date.toISOString().slice(0, 10);
+}

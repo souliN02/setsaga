@@ -7,6 +7,7 @@ import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { ToastHost } from '@/components/ToastHost';
 import migrations from '@/drizzle/migrations';
 import { db } from '@/lib/db/client';
 import { discardWorkout, getUnfinishedWorkouts, getWorkoutSets } from '@/lib/db/queries';
@@ -129,6 +130,8 @@ export default function RootLayout() {
             options={{ presentation: 'modal', title: 'Add exercise' }}
           />
         </Stack>
+        {/* Above the navigator so celebrations survive screen transitions. */}
+        <ToastHost />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

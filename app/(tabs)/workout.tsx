@@ -15,6 +15,7 @@ import {
 import { ElapsedTime } from '@/components/ElapsedTime';
 import { EmptyState } from '@/components/EmptyState';
 import { ExerciseSection } from '@/components/ExerciseSection';
+import { buildCelebrationToasts } from '@/lib/celebrations';
 import {
   addSet,
   deleteSet,
@@ -29,6 +30,7 @@ import {
 import { colors } from '@/lib/theme';
 import { deriveExerciseOrder, groupSetsByExercise, mergeExerciseOrder } from '@/lib/workout';
 import { useSessionStore } from '@/store/sessionStore';
+import { useToastStore } from '@/store/toastStore';
 
 export default function WorkoutScreen() {
   const activeWorkoutId = useSessionStore((state) => state.activeWorkoutId);
@@ -77,6 +79,7 @@ function StartWorkoutView() {
 function ActiveSessionView({ workoutId }: { workoutId: number }) {
   const exerciseOrder = useSessionStore((state) => state.exerciseOrder);
   const endSession = useSessionStore((state) => state.endSession);
+  const enqueueToasts = useToastStore((state) => state.enqueueToasts);
   const [pending, setPending] = useState(false);
   const listRef = useRef<FlatList<number>>(null);
   const pendingScrollIndex = useRef<number | null>(null);
@@ -146,7 +149,15 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
         onPress: async () => {
           setPending(true);
           try {
-            await finishWorkout(workoutId);
+            const result = await finishWorkout(workoutId);
+            // PR toasts need exercise names; the session's rows are already
+            // loaded, and every PR is on an exercise from this session.
+            enqueueToasts(
+              buildCelebrationToasts(
+                result,
+                new Map(exerciseRows.map((exercise) => [exercise.id, exercise.name])),
+              ),
+            );
             endSession();
           } finally {
             setPending(false);

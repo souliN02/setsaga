@@ -1,4 +1,4 @@
-import { formatDuration, formatWeight } from '@/lib/format';
+import { formatCount, formatDate, formatDuration, formatVolume, formatWeight } from '@/lib/format';
 
 describe('formatWeight', () => {
   it('formats whole and decimal kilograms', () => {
@@ -27,5 +27,44 @@ describe('formatDuration', () => {
 
   it('clamps negative input to zero', () => {
     expect(formatDuration(-5_000)).toBe('0:00');
+  });
+});
+
+describe('formatCount', () => {
+  it('groups thousands in plain counts (badge progress targets)', () => {
+    expect(formatCount(499)).toBe('499');
+    expect(formatCount(5000)).toBe('5,000');
+    expect(formatCount(100000)).toBe('100,000');
+    expect(formatCount(1234567)).toBe('1,234,567');
+  });
+});
+
+// Volume totals get large fast (100,000 kg lifetime badge) — whole kg with
+// thousands grouping keeps them readable.
+describe('formatVolume', () => {
+  it('formats small totals without grouping', () => {
+    expect(formatVolume(0)).toBe('0 kg');
+    expect(formatVolume(999)).toBe('999 kg');
+  });
+
+  it('rounds to whole kilograms', () => {
+    expect(formatVolume(1234.6)).toBe('1,235 kg');
+  });
+
+  it('groups thousands', () => {
+    expect(formatVolume(5000)).toBe('5,000 kg');
+    expect(formatVolume(123456)).toBe('123,456 kg');
+  });
+});
+
+describe('formatDate', () => {
+  it('formats a unix-ms timestamp as a short local date', () => {
+    // Built from local-time components so the expectation holds in any timezone.
+    expect(formatDate(new Date(2026, 2, 12, 12).getTime())).toBe('Mar 12, 2026');
+  });
+
+  it('covers month names at year boundaries', () => {
+    expect(formatDate(new Date(2025, 11, 31, 12).getTime())).toBe('Dec 31, 2025');
+    expect(formatDate(new Date(2026, 0, 1, 12).getTime())).toBe('Jan 1, 2026');
   });
 });

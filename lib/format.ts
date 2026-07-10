@@ -45,6 +45,26 @@ export function formatWeight(weightKg: number): string {
   return `${rounded} kg`;
 }
 
+// Hand-rolled thousands grouping instead of toLocaleString so device (Hermes)
+// and CI output are identical.
+export function formatCount(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// Whole kilograms with grouping — volume totals get large fast (the lifetime
+// badge sits at 100,000 kg).
+export function formatVolume(volumeKg: number): string {
+  return `${formatCount(volumeKg)} kg`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Short local date for unlock rows and PR history: "Mar 12, 2026". */
+export function formatDate(unixMs: number): string {
+  const date = new Date(unixMs);
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
 /** Elapsed duration from ms: "0:07", "45:12", "1:23:45". */
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

@@ -4,7 +4,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { toLocalDateKey } from '@/lib/dates';
 import { newBadgeUnlocks, type BadgeStats } from '@/lib/game/badges';
 import { detectPrs, type PrEvent } from '@/lib/game/prs';
-import { currentStreak } from '@/lib/game/streak';
+import { deriveGameStats, type GameStats } from '@/lib/game/stats';
 import { levelForXp, totalXp } from '@/lib/game/xp';
 import { nextSetNumberFor } from '@/lib/workout';
 
@@ -175,44 +175,60 @@ export async function deleteSet(setId: number): Promise<void> {
 
 // --- Post-workout pipeline (Phase 3, SPEC.md sections 4 and 8) ---
 
-// Derived gamification stats over finished workouts. The inner join to sets
-// enforces the section 6 definition throughout: a workout only counts once it
-// is finished AND contains at least one set.
+// Per-set rows of finished workouts — the one input deriveGameStats needs.
+// The inner join to sets enforces the section 6 definition throughout: a
+// workout only counts once it is finished AND contains at least one set.
 type GameStatsTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function loadGameStats(tx: GameStatsTx, todayKey: string): Promise<BadgeStats> {
-  const [totals] = await tx
+function selectGameStatRows(dbOrTx: GameStatsTx | typeof db) {
+  return dbOrTx
     .select({
-      finishedWorkouts: sql<number>`count(distinct ${sets.workoutId})`,
-      lifetimeSets: sql<number>`count(${sets.id})`,
-      prEvents: sql<number>`coalesce(sum(${sets.isPr}), 0)`,
-      lifetimeVolume: sql<number>`coalesce(sum(${sets.weightKg} * ${sets.reps}), 0)`,
+      workoutId: sets.workoutId,
+      startedAt: workouts.startedAt,
+      reps: sets.reps,
+      weightKg: sets.weightKg,
+      isPr: sets.isPr,
     })
     .from(sets)
     .innerJoin(workouts, eq(sets.workoutId, workouts.id))
     .where(isNotNull(workouts.finishedAt));
+}
 
-  const sessionVolumes = await tx
-    .select({ volume: sql<number>`sum(${sets.weightKg} * ${sets.reps})` })
-    .from(sets)
-    .innerJoin(workouts, eq(sets.workoutId, workouts.id))
-    .where(isNotNull(workouts.finishedAt))
-    .groupBy(sets.workoutId);
+async function loadGameStats(tx: GameStatsTx, todayKey: string): Promise<GameStats> {
+  return deriveGameStats(await selectGameStatRows(tx), todayKey);
+}
 
-  const trainingDays = await tx
-    .selectDistinct({ startedAt: workouts.startedAt })
-    .from(workouts)
-    .innerJoin(sets, eq(sets.workoutId, workouts.id))
-    .where(isNotNull(workouts.finishedAt));
+// Live derived stats for Home and Achievements — same rows, same pure
+// derivation as the pipeline, so the screens can never disagree with it.
+// todayKey is a dependency: a new day shifts streak and week windows.
+export function useGameStats(todayKey: string): GameStats {
+  const { data } = useLiveQuery(selectGameStatRows(db), [todayKey]);
+  return deriveGameStats(data, todayKey);
+}
 
-  return {
-    ...totals,
-    maxSessionVolume: sessionVolumes.reduce((max, row) => Math.max(max, row.volume), 0),
-    currentStreak: currentStreak(
-      trainingDays.map((row) => toLocalDateKey(row.startedAt)),
-      todayKey,
-    ),
-  };
+// Recent PRs for the Home screen. isPr is only ever flagged by the finish
+// pipeline, so PR sets are always in finished workouts — no extra join needed.
+export function useRecentPrs(limit: number) {
+  return useLiveQuery(
+    db
+      .select({
+        setId: sets.id,
+        exerciseName: exercises.name,
+        weightKg: sets.weightKg,
+        createdAt: sets.createdAt,
+      })
+      .from(sets)
+      .innerJoin(exercises, eq(sets.exerciseId, exercises.id))
+      .where(eq(sets.isPr, true))
+      .orderBy(desc(sets.createdAt))
+      .limit(limit),
+    [limit],
+  );
+}
+
+// Live unlock rows for the Achievements grid (badgeId → unlockedAt).
+export function useAchievements() {
+  return useLiveQuery(db.select().from(achievements));
 }
 
 function levelFromStats(stats: BadgeStats): number {

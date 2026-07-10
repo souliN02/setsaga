@@ -6,9 +6,9 @@ Gamified offline-first workout tracker for iOS and Android. Log sets, reps and w
 
 All data lives in SQLite on the device — no accounts, no backend, no network required. Full product spec in [SPEC.md](SPEC.md).
 
-**Status:** Phase 3 — gamification engine. XP, levels, streaks, PR detection and the 12 badge criteria are implemented as **pure functions** in `lib/game/` (built test-first; the jest suite is the executable version of SPEC.md section 8, with 100% coverage on the engine). Gamification state is **derived, never stored**: finishing a workout runs a pipeline that flags PR sets and writes badge-unlock rows, but XP/level/streak are always recomputed from the workout data, so they can never drift out of sync. The UI for all of this lands in Phase 4 — see SPEC.md section 12 for the build plan.
+**Status:** Phase 4 — gamification UI. Home shows your level and XP bar, streak flame (with a warning on the last day before the streak breaks), this week's workouts and volume, and recent PRs; the Awards tab shows all 12 badges with live progress toward locked criteria and unlock dates on earned ones. Finishing a workout pops celebration toasts for PRs, level-ups and badge unlocks. Everything on screen is read live from SQLite and recomputed through the **same pure derivation** (`lib/game/stats.ts`) the badge pipeline uses, so the UI can never disagree with the engine. History and charts land in Phase 5 — see SPEC.md section 12 for the build plan.
 
-Earlier phases: workout logging is **write-through and crash-safe** — the workout row is inserted the moment you start and every set the moment you confirm it, so killing the app mid-session loses nothing; the next launch offers Resume or Discard.
+Earlier phases: the engine itself (XP, levels, streaks, PR detection, badge criteria) is **pure functions built test-first** in `lib/game/` — gamification state is **derived, never stored**, so it can't drift out of sync with the workout data. Workout logging is **write-through and crash-safe** — the workout row is inserted the moment you start and every set the moment you confirm it, so killing the app mid-session loses nothing; the next launch offers Resume or Discard.
 
 ## Local setup
 

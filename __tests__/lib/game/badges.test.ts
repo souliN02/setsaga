@@ -1,4 +1,4 @@
-import { BADGES, newBadgeUnlocks, type BadgeStats } from '@/lib/game/badges';
+import { BADGES, getBadge, newBadgeUnlocks, type BadgeStats } from '@/lib/game/badges';
 
 // SPEC.md 8.5 — 12 badges, derived from stats; unlock rows are written the
 // first time a criterion is met and persist forever.
@@ -108,6 +108,51 @@ describe('badge criteria', () => {
   it('exceeding a threshold keeps the criterion satisfied', () => {
     expect(badge('workouts_10').isUnlocked(makeStats({ finishedWorkouts: 37 }))).toBe(true);
     expect(badge('streak_3').isUnlocked(makeStats({ currentStreak: 9 }))).toBe(true);
+  });
+});
+
+// Progress is display-only (locked badges on the Achievements grid); it must
+// track the same stat and threshold as the unlock criterion, never a new rule.
+describe('badge progress', () => {
+  function statsWith(key: keyof BadgeStats, value: number): BadgeStats {
+    const stats = makeStats();
+    stats[key] = value;
+    return stats;
+  }
+
+  const tracked: [string, keyof BadgeStats, number][] = [
+    ['first_workout', 'finishedWorkouts', 1],
+    ['workouts_10', 'finishedWorkouts', 10],
+    ['workouts_50', 'finishedWorkouts', 50],
+    ['workouts_100', 'finishedWorkouts', 100],
+    ['streak_3', 'currentStreak', 3],
+    ['streak_7', 'currentStreak', 7],
+    ['streak_14', 'currentStreak', 14],
+    ['first_pr', 'prEvents', 1],
+    ['pr_10', 'prEvents', 10],
+    ['session_volume_5k', 'maxSessionVolume', 5000],
+    ['lifetime_volume_100k', 'lifetimeVolume', 100000],
+    ['sets_500', 'lifetimeSets', 500],
+  ];
+
+  it.each(tracked)('%s reports the %s stat against a target of %i', (id, statKey, target) => {
+    expect(badge(id).progress(makeStats())).toEqual({ current: 0, target });
+    expect(badge(id).progress(statsWith(statKey, 7))).toEqual({ current: 7, target });
+  });
+
+  it.each(tracked)('%s unlocks exactly when its progress reaches the target', (id, statKey, target) => {
+    expect(badge(id).isUnlocked(statsWith(statKey, target - 1))).toBe(false);
+    expect(badge(id).isUnlocked(statsWith(statKey, target))).toBe(true);
+  });
+});
+
+describe('getBadge', () => {
+  it('returns the badge for a known id', () => {
+    expect(getBadge('first_pr')?.name).toBe('New Heights');
+  });
+
+  it('returns undefined for an unknown id', () => {
+    expect(getBadge('not_a_badge')).toBeUndefined();
   });
 });
 

@@ -129,6 +129,8 @@ export default function RootLayout() {
             name="exercise-picker"
             options={{ presentation: 'modal', title: 'Add exercise' }}
           />
+          <Stack.Screen name="workout/[id]" options={{ title: 'Workout' }} />
+          <Stack.Screen name="exercise/[id]" options={{ title: 'Exercise' }} />
         </Stack>
         {/* Above the navigator so celebrations survive screen transitions. */}
         <ToastHost />

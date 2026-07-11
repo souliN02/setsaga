@@ -1,4 +1,4 @@
-import { daysBetween, startOfWeekKey, toLocalDateKey } from '@/lib/dates';
+import { addDaysToKey, daysBetween, startOfWeekKey, toLocalDateKey } from '@/lib/dates';
 
 // Timestamps are built from local-time components so expectations hold in any
 // timezone the test runner happens to use.
@@ -84,5 +84,36 @@ describe('startOfWeekKey', () => {
 
   it('crosses year boundaries', () => {
     expect(startOfWeekKey('2026-01-01')).toBe('2025-12-29'); // Thursday → Monday in 2025
+  });
+});
+
+describe('addDaysToKey', () => {
+  it('adds days within a month', () => {
+    expect(addDaysToKey('2026-07-06', 3)).toBe('2026-07-09');
+  });
+
+  it('is an identity for 0 days', () => {
+    expect(addDaysToKey('2026-07-06', 0)).toBe('2026-07-06');
+  });
+
+  it('subtracts days with a negative count', () => {
+    expect(addDaysToKey('2026-07-06', -7)).toBe('2026-06-29');
+  });
+
+  it('crosses month boundaries forward', () => {
+    expect(addDaysToKey('2026-06-29', 7)).toBe('2026-07-06');
+  });
+
+  it('crosses year boundaries backward', () => {
+    expect(addDaysToKey('2026-01-05', -7)).toBe('2025-12-29');
+  });
+
+  it('handles leap-year February', () => {
+    expect(addDaysToKey('2024-02-26', 7)).toBe('2024-03-04');
+    expect(addDaysToKey('2026-02-23', 7)).toBe('2026-03-02');
+  });
+
+  it('inverts daysBetween: stepping by the measured gap lands on the target', () => {
+    expect(addDaysToKey('2025-12-29', daysBetween('2025-12-29', '2026-07-06'))).toBe('2026-07-06');
   });
 });

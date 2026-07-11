@@ -37,8 +37,10 @@ export function deriveExerciseOrder(sets: Pick<WorkoutSet, 'exerciseId' | 'id'>[
 }
 
 /** Sets grouped per exercise, preserving the input order within each group. */
-export function groupSetsByExercise(sets: WorkoutSet[]): Map<number, WorkoutSet[]> {
-  const groups = new Map<number, WorkoutSet[]>();
+export function groupSetsByExercise<T extends Pick<WorkoutSet, 'exerciseId'>>(
+  sets: T[],
+): Map<number, T[]> {
+  const groups = new Map<number, T[]>();
   for (const set of sets) {
     const group = groups.get(set.exerciseId);
     if (group) {

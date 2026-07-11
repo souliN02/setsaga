@@ -21,6 +21,13 @@ export function daysBetween(fromKey: string, toKey: string): number {
   return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / MS_PER_DAY);
 }
 
+/** A date key shifted by a signed number of calendar days. */
+export function addDaysToKey(dateKey: string, days: number): string {
+  const date = new Date(Date.parse(dateKey));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 /**
  * The Monday of the week containing a date key. "This week" everywhere in the
  * app means this Monday–Sunday range.

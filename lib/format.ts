@@ -65,6 +65,24 @@ export function formatDate(unixMs: number): string {
   return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
+/** Yearless local date for chart axes: "Mar 12". */
+export function formatShortDate(unixMs: number): string {
+  const date = new Date(unixMs);
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
+
+/** Yearless date from a YYYY-MM-DD key (week bucket labels): "Jun 22". */
+export function formatDateKey(dateKey: string): string {
+  return `${MONTHS[Number(dateKey.slice(5, 7)) - 1]} ${Number(dateKey.slice(8, 10))}`;
+}
+
+/** Counts squeezed for chart axes: "850", "1.2k", "20k". */
+export function formatCompactCount(n: number): string {
+  if (n < 1000) return String(Math.round(n));
+  const thousands = Math.round(n / 100) / 10;
+  return `${thousands}k`;
+}
+
 /** Elapsed duration from ms: "0:07", "45:12", "1:23:45". */
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

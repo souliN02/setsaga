@@ -52,6 +52,11 @@
     "test": "jest",
     "db:generate": "drizzle-kit generate"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@shopify/react-native-skia"
+    ]
+  },
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {

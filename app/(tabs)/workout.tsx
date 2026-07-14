@@ -27,6 +27,7 @@ import {
   useWorkout,
   useWorkoutSets,
 } from '@/lib/db/queries';
+import { hapticSetComplete } from '@/lib/haptics';
 import { colors } from '@/lib/theme';
 import { deriveExerciseOrder, groupSetsByExercise, mergeExerciseOrder } from '@/lib/workout';
 import { useSessionStore } from '@/store/sessionStore';
@@ -208,6 +209,7 @@ function ActiveSessionView({ workoutId }: { workoutId: number }) {
               exercise={exercise}
               sets={setsByExercise.get(exerciseId) ?? []}
               onAddSet={(reps, weightKg) => {
+                hapticSetComplete();
                 void addSet({ workoutId, exerciseId, reps, weightKg });
               }}
               onUpdateSet={(setId, reps, weightKg) => {

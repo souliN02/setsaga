@@ -4,6 +4,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { CelebrationKind, CelebrationToast } from '@/lib/celebrations';
+import { hapticCelebration } from '@/lib/haptics';
 import { colors } from '@/lib/theme';
 import { useToastStore } from '@/store/toastStore';
 
@@ -32,6 +33,8 @@ function ToastCard({ toast }: { toast: CelebrationToast }) {
   const [progress] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    // Each toast is its own keyed mount, so this fires exactly once per toast.
+    hapticCelebration();
     Animated.timing(progress, {
       toValue: 1,
       duration: 220,

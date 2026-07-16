@@ -8,6 +8,10 @@
   <img src="docs/media/demo.gif" alt="Logging a set and hitting a PR" width="280" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/souliN02/setsaga/releases/latest"><b>⬇ Download the Android APK</b></a> · iOS runs from source via Expo Go (see <a href="#local-setup">Local setup</a>)
+</p>
+
 ## Features
 
 - **Workout logging** — pick from ~100 seeded exercises (or create your own), log sets × reps × kg with quick-add defaults and swipe-to-delete
@@ -65,7 +69,7 @@ pnpm typecheck    # tsc --noEmit
 
 Database workflow: schema lives in `lib/db/schema.ts`; after changing it, run `pnpm db:generate` and commit the new migration. Never edit an already-applied migration.
 
-Android APK (EAS free tier): `pnpm dlx eas-cli build -p android --profile preview`
+Android APK: grab the installable build from the [latest release](https://github.com/souliN02/setsaga/releases/latest), or build your own on the EAS free tier: `pnpm dlx eas-cli build -p android --profile preview`
 
 ## Roadmap
 

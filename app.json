@@ -9,6 +9,7 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0D10",
     "android": {
+      "package": "com.soulin02.setsaga",
       "adaptiveIcon": {
         "backgroundColor": "#0B0D10",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,7 +29,7 @@
         {
           "backgroundColor": "#0B0D10",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 160
         }
       ],
       "expo-sqlite"
@@ -36,6 +37,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1448d6c2-5e2a-4e6c-bd50-cd7d11b8b4fa"
+      }
+    },
+    "owner": "soulin02"
   }
 }
